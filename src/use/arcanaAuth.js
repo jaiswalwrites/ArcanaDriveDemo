@@ -14,11 +14,16 @@ function useArcanaAuth() {
   async function initAuth() {
     store.dispatch("showFullScreenLoader", "Initialising Arcana auth...");
 
-    // AUTH-2: Initialise and configure the auth service.
-    // a) Initialise the auth service
-    // b) Set a disconnect listener. On disconnect, clear store,
-    //    route to login and perform a refresh
-    // ...
+    await auth.init({
+      appMode: 2,
+      position: "right",
+    });
+
+    auth.provider.on("disconnect", async () => {
+      store.dispatch("clearStore");
+      router.push("/login");
+      router.go();
+    });
 
     store.dispatch("hideFullScreenLoader");
   }
@@ -27,27 +32,28 @@ function useArcanaAuth() {
     store.dispatch("showFullScreenLoader", "Checking login status...");
 
     // AUTH-3: Check if a user is logged in
-    const loginStatus = FIX_ME;
+    const loginStatus = await auth.isLoggedIn();
 
     store.dispatch("hideFullScreenLoader");
     return loginStatus;
   }
 
   async function requestSocialLogin(type) {
-    // AUTH-4: Login user with selected social login type
-    // ...
+    await auth.loginWithSocial(type);
   }
 
   async function fetchUserDetails() {
     store.dispatch("showFullScreenLoader", "Fetching account details...");
 
     // AUTH-5: Fetch user details
-    const userInfo = FIX_ME;
+    const userInfo = await auth.getUser();
 
     store.dispatch("addUserInfo", JSON.parse(userInfo));
 
     // AUTH-6: Fetch user's wallet address
-    const walletAddress = FIX_ME;
+    const [walletAddress] = await auth.provider.request({
+      method: "eth_accounts",
+    });
 
     store.dispatch("addWalletInfo", { address: walletAddress });
 
@@ -56,12 +62,12 @@ function useArcanaAuth() {
 
   async function logout() {
     // AUTH-7: Logout a user
-    // ...
+    await auth.logout();
   }
 
   async function requestPublicKey(email) {
     // AUTH-8: Get public key associated with the email
-    // ...
+    return await auth.getPublicKey(email);
   }
 
   return {
