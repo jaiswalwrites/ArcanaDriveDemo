@@ -17,7 +17,7 @@ function useArcanaStorage() {
 
   function initStorage() {
     // STORAGE-2: Initialize the storage instance
-    // ...
+    StorageService.init();
   }
 
   async function fetchStorageLimits() {
@@ -25,12 +25,12 @@ function useArcanaStorage() {
 
     try {
       // STORAGE-3: Fetch storage limits
-      // a) Get the access object from storage instance
-      const access = FIX_ME;
+      const access = await storage.getAccess();
+      
       // b) Get upload limit and download limit using this access object
       // ...
-      const [storageUsed, totalStorage] = [FIX_ME, FIX_ME];
-      const [bandwidthUsed, totalBandwidth] = [FIX_ME, FIX_ME];
+      const [storageUsed, totalStorage] = await access.getUploadLimit();
+      const [bandwidthUsed, totalBandwidth] = await access.getDownloadLimit();
 
       store.dispatch("updateStorageLimits", {
         totalStorage,
@@ -51,7 +51,7 @@ function useArcanaStorage() {
 
     try {
       // STORAGE-4: Get files owned by the user from storage instance
-      const myFiles = FIX_ME;
+      const myFiles = await storage.myFiles();
 
       store.dispatch("updateMyFiles", myFiles);
     } catch (error) {
@@ -65,7 +65,7 @@ function useArcanaStorage() {
 
     try {
       // STORAGE-5: Get files shared with the user from storage instance
-      const sharedFiles = FIX_ME;
+      const sharedFiles = await storage.sharedFiles();
 
       store.dispatch("updateSharedWithMe", sharedFiles);
     } catch (error) {
@@ -92,10 +92,13 @@ function useArcanaStorage() {
 
       // STORAGE-6: Upload a file
       // a) Get uploader object from storage instance
-      const uploader = FIX_ME;
-      // b) Handle progress, success and error events
+      const uploader = await storage.getUploader();
+      uploader.onProgress = onProgress;
+      uploader.onSuccess = onSuccess;
+      uploader.onError = onError;
       // c) Upload a file and get the did
-      const did = FIX_ME;
+      const did = await uploader.upload(file);
+    
 
       function onProgress(uploaded, total) {
         store.dispatch(
@@ -140,9 +143,13 @@ function useArcanaStorage() {
 
       // STORAGE-7: Download a file
       // a) Get downloader object from storage instance
-      const downloader = FIX_ME;
+      const downloader = await storage.getDownloader();
+      
       // b) Handle progress and success events
+      downloader.onProgress = onProgress;
+      downloader.onSuccess = onSuccess;
       // c) Download a file
+      await downloader.download(file.did);
 
       function onProgress(downloaded, total) {
         store.dispatch(
@@ -175,9 +182,9 @@ function useArcanaStorage() {
 
       // STORAGE-8: Delete a file
       // a) Get access object from storage instance
-      const access = FIX_ME;
+      const access = await storage.getAccess();
       // b) Delete the file using access object
-      // ...
+      await access.deleteFile(file.did);
 
       store.dispatch("removeMyFiles", file);
       fetchStorageLimits();
@@ -201,13 +208,15 @@ function useArcanaStorage() {
 
       // STORAGE-9: Share a file
       // a) Get public key of user using his email
-      const publicKey = FIX_ME;
+      const publicKey = await requestPublicKey(email);
+
       // b) Compute wallet address using public key
-      const address = FIX_ME;
+      const address = computeAddress(publicKey);
+      
       // c) Get access object from storage instance
-      const access = FIX_ME;
+      const access = await storage.getAccess();
       // d) Share a file to this address
-      // ...
+      await access.share(file.did, address);
 
       toastSuccess(`Shared file successfully with ${email}`);
     } catch (error) {
@@ -227,9 +236,9 @@ function useArcanaStorage() {
 
       // STORAGE-10: Get list of users, the file is shared with
       // a) Get access object from storage instance
-      const access = FIX_ME;
+      const access = await storage.getAccess();
       // b) Get shared users
-      const sharedUsers = FIX_ME;
+      const sharedUsers = await access.getSharedUsers(did);
 
       return sharedUsers;
     } catch (error) {
@@ -248,9 +257,9 @@ function useArcanaStorage() {
 
       // STORAGE-11: Revoke access to a shared file
       // a) Get access object from storage instance
-      const access = FIX_ME;
+      const access = await storage.getAccess();
       // b) Revoke share access
-      // ...
+      await access.revoke(fileToRevoke.did, address);
 
       toastSuccess("File access revoked");
     } catch (error) {
@@ -272,13 +281,13 @@ function useArcanaStorage() {
 
       // STORAGE-12: Transfer ownership of the file
       // a) Get public key of user using his email
-      const publicKey = FIX_ME;
+      const publicKey = await requestPublicKey(email);
       // b) Compute wallet address using public key
-      const address = FIX_ME;
+      const address = computeAddress(publicKey);
       // c) Get access object from storage instance and
-      const access = FIX_ME;
+      const access = await storage.getAccess();
       // d) Transfer ownership of this file to that address
-      // ...
+      await access.changeFileOwner(fileToTransfer.did, address);
 
       store.dispatch("removeMyFiles", fileToTransfer);
       fetchStorageLimits();
